@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-10T21:42:08.425Z",
+  "generatedAt": "2026-10-11T05:44:06.639Z",
   "heartbeat": {
     "ok": true,
     "daily": [
@@ -121,28 +121,28 @@
       },
       {
         "day": "2026-10-11",
-        "dau": 110
+        "dau": 268
       }
     ],
-    "installs": 1496,
+    "installs": 1525,
     "wau": 20,
     "mau": 20,
     "byVersion": [
       {
         "version": "0.8.42",
-        "n": 406
+        "n": 421
       },
       {
         "version": "0.8.37",
-        "n": 205
+        "n": 197
       },
       {
         "version": "0.8.36",
-        "n": 153
+        "n": 150
       },
       {
         "version": "0.8.34",
-        "n": 81
+        "n": 80
       },
       {
         "version": "0.8.35",
@@ -150,11 +150,11 @@
       },
       {
         "version": "0.8.40",
-        "n": 37
+        "n": 36
       },
       {
         "version": "0.8.41",
-        "n": 16
+        "n": 14
       },
       {
         "version": "0.8.38",
@@ -224,20 +224,16 @@
       }
     ],
     "tz": "Asia/Shanghai",
-    "generatedAt": "2026-10-10T21:42:06.041Z"
+    "generatedAt": "2026-10-11T05:44:04.133Z"
   },
   "heartbeatError": null,
   "npm": {
     "package": "dsh-remote",
-    "checkedAt": "2026-10-10T21:42:08.131Z",
+    "checkedAt": "2026-10-11T05:44:06.263Z",
     "latest": "0.8.42",
-    "lastWeek": 4170,
-    "lastMonth": 12648,
+    "lastWeek": 5219,
+    "lastMonth": 14174,
     "daily": [
-      {
-        "day": "2026-09-09",
-        "downloads": 423
-      },
       {
         "day": "2026-09-10",
         "downloads": 283
@@ -353,6 +349,10 @@
       {
         "day": "2026-10-08",
         "downloads": 1827
+      },
+      {
+        "day": "2026-10-09",
+        "downloads": 1949
       }
     ],
     "zeroDays": [
@@ -363,9 +363,9 @@
     "note": "npm daily counts have reporting gaps; zero-value days are flagged and are not real zero usage."
   },
   "repo": {
-    "stars": 131,
+    "stars": 132,
     "forks": 28,
     "openIssues": 3,
-    "pushedAt": "2026-10-10T16:42:24Z"
+    "pushedAt": "2026-10-10T21:42:09Z"
   }
 }
