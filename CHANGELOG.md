@@ -2,6 +2,60 @@
 
 All notable changes to **dsh-remote**.
 
+## 0.8.44 — 2026-10-14
+### 支持只允许 GSSAPI/Kerberos 的机器（issue #51）+ 修好目录选择器被弹出（issue #52）
+
+**1）新增「系统 OpenSSH」后端：企业 Kerberos 机器现在能连了（issue #51）**
+
+有些企业的机器既不开密码也不开公钥认证，只认 `gssapi-with-mic` —— 你在终端里 `kinit` 之后
+`ssh <别名>` 一切正常，但插件连不上：内置的 ssh2 **不知道该怎样出示本地 Kerberos 票据**。
+
+新增的 `openssh` 后端把传输交给**本机的 `ssh` 命令**，于是「ssh 能做的事，它都能做」：
+
+- 认证完全交给 ssh：GSSAPI/Kerberos（`kinit` 后免密）、`~/.ssh/config`、agent、硬件/PKCS11 密钥；
+- `ProxyCommand`、`Match` 块、`ControlPath`、`IdentityFile` 等等**全部照 `~/.ssh/config` 生效**；
+- 主机名**原样**交给 ssh（不会先解析成 IP）—— 这点很关键：ssh 是按「你给它的名字」去匹配 `Host` 块的，
+  若传解析后的 HostName，`Host <别名>` 里的 GSSAPI 设置就**不会命中**，等于白配。因此「别名模式 + openssh 后端」
+  就是 issue #50 想要的「配置唯一来源」；
+- 主机密钥由 ssh 用**你自己的** `known_hosts` 校验（`hostKeyMode` 映射成 `StrictHostKeyChecking`）。
+
+实现上没有重写文件传输：`ssh -s <目标> sftp` 在 stdio 上就是一条**标准 SFTP v3 字节流**，
+于是直接把我们本来就在用的 ssh2 SFTP 协议引擎接在这条流上（`lib/openssh.js` 里一个几十行的 `_protocol` 适配），
+所以读写语义、大包优化与 native 后端完全一致。`exec`/`forwardOut`/反向转发分别走
+`ssh -- <目标> <命令>` / `ssh -W host:port` / `ssh -N -R`。
+
+代价（已写进文档，不藏着）：每条 `exec` 新建一次连接，比 native 慢；SFTP 复用单条长连接，
+所以选目录、浏览文件不受影响。**`backend` 按机器独立设置**，Kerberos 机器用 `openssh`，其余机器不受影响。
+
+验证：真机（编译机 `9.134.186.191:36000`）端到端 **15/15** —— `connect`/`exec`（含退出码与 stderr 透传）/
+`detect`/`readdir`(286 项)/`stat`/`readFile`(5746B)/`readPartial`/写入读回删除/`ssh -W` 隧道打通远端 sshd
+(拿到 `SSH-2.0-OpenSSH_8.0` banner)/超时/`AbortSignal`；另一个用真实 `~/.ssh/config` **别名**
+（`Host` 块里带 `GSSAPIAuthentication yes`）的用例 **5/5**；native 后端回归也确认仍正常。新增 30 个单测。
+
+**大文件传输的流量控制（同一 issue，实测才发现）**：把 ssh2 的 SFTP 引擎接在裸管道上时，**发送窗口必须
+按 `packetSize` 的整数倍授予、且只能在管道 `drain` 时补回**。ssh2 只在「自己的减法把窗口减到 0」那一瞬间
+才会挂上 flush 回调；如果在 `channelData` 里看到管道写满就顺手把窗口改成 0，就绕过了它自己的减法 ⇒
+回调永不挂上 ⇒ 缓冲的剩量永不发出 ⇒ **传 4MB 会卡在 32KB 不动**（`_buffer.length` 恒为 1）。
+8MB/64MB 上传下载现均逐字节校验一致（11~13 MB/s 上行、6.7~8.9 MB/s 下行），
+并补了 `integration-openssh-large.mjs` 与一条单测把这条契约钉住 —— 小文件用例**看不到**这个问题。
+
+**2）目录选择器：点补全项不再把整个弹窗关掉（issue #52）**
+
+「选择工作目录 → 远程」里打字出补全、点其中一项，会**整个弹窗被关掉**且底部「设为远程工作区」按钮还会被推走。
+两个缺陷叠加：
+
+- **遮罩用了裸 `onClick`**：`click` 是"按下与抬起落在同一元素"才触发，而补全项是 `onMouseDown` 触发后
+  面板**同步重排**（垂直居中 ⇒ 上下边缘一起挪），于是 mouseup 已经落在遮罩上，浏览器把这次 click
+  报给遮罩 ⇒ 命中裸 `onClick` ⇒ 关掉整个弹窗。现在三处遮罩（选择器主遮罩、本机浏览浮层、PromptDialog）
+  都只在**按下起点**就是遮罩时才关闭：拖拽到外面松手不再误关，「点外面关掉」照旧好使。
+- **补全下拉在文档流里**：展开就把主按钮往下推，用户瞄着按钮点、按钮自己跑。现在下拉
+  `position:absolute` 脱离文档流（面板高度不再变，这也是上面那条守卫能精确成立的前提），
+  底部按钮行抬到 `zIndex:70` 并给不透明背景，让列表从它后面滑过而不是盖住它；滚动容器在展开时
+  改为 `visible` 以免裁掉绝对定位的下拉。补全项还额外 `preventDefault+stopPropagation` 吞掉本次手势。
+
+验证：新增 8 个用例，**带反向对照** —— 把两处缺陷分别改回原样，对应用例确实转红（2 个 / 3 个），
+证明用例真的在测这两处而不是恒绿。全量单测 **513 pass / 0 fail**。
+
 ## 0.8.43 — 2026-10-11
 ### 会话列表里一眼看出「这是远程会话，连的是哪台机」（issue #49）
 
