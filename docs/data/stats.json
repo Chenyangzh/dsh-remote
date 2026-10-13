@@ -1,12 +1,8 @@
 {
-  "generatedAt": "2026-10-13T14:08:57.014Z",
+  "generatedAt": "2026-10-13T22:43:11.055Z",
   "heartbeat": {
     "ok": true,
     "daily": [
-      {
-        "day": "2026-09-14",
-        "dau": 0
-      },
       {
         "day": "2026-09-15",
         "dau": 0
@@ -121,16 +117,20 @@
       },
       {
         "day": "2026-10-13",
-        "dau": 750
+        "dau": 785
+      },
+      {
+        "day": "2026-10-14",
+        "dau": 103
       }
     ],
-    "installs": 1979,
+    "installs": 2028,
     "wau": 20,
     "mau": 20,
     "byVersion": [
       {
         "version": "0.8.44",
-        "n": 377
+        "n": 382
       },
       {
         "version": "0.8.37",
@@ -138,11 +138,11 @@
       },
       {
         "version": "0.8.36",
-        "n": 133
+        "n": 130
       },
       {
         "version": "0.8.42",
-        "n": 128
+        "n": 125
       },
       {
         "version": "0.8.34",
@@ -165,6 +165,10 @@
         "n": 8
       },
       {
+        "version": "0.8.29",
+        "n": 7
+      },
+      {
         "version": "0.8.31",
         "n": 7
       },
@@ -174,10 +178,6 @@
       },
       {
         "version": "0.8.28",
-        "n": 6
-      },
-      {
-        "version": "0.8.29",
         "n": 6
       },
       {
@@ -232,20 +232,16 @@
       }
     ],
     "tz": "Asia/Shanghai",
-    "generatedAt": "2026-10-13T14:08:54.665Z"
+    "generatedAt": "2026-10-13T22:43:08.942Z"
   },
   "heartbeatError": null,
   "npm": {
     "package": "dsh-remote",
-    "checkedAt": "2026-10-13T14:08:56.723Z",
+    "checkedAt": "2026-10-13T22:43:10.720Z",
     "latest": "0.8.44",
-    "lastWeek": 5102,
-    "lastMonth": 14697,
+    "lastWeek": 6665,
+    "lastMonth": 15867,
     "daily": [
-      {
-        "day": "2026-09-12",
-        "downloads": 393
-      },
       {
         "day": "2026-09-13",
         "downloads": 243
@@ -361,6 +357,10 @@
       {
         "day": "2026-10-11",
         "downloads": 352
+      },
+      {
+        "day": "2026-10-12",
+        "downloads": 1563
       }
     ],
     "zeroDays": [
@@ -374,6 +374,6 @@
     "stars": 137,
     "forks": 28,
     "openIssues": 2,
-    "pushedAt": "2026-10-13T00:37:49Z"
+    "pushedAt": "2026-10-13T14:08:58Z"
   }
 }
