@@ -2,6 +2,97 @@
 
 All notable changes to **dsh-remote**.
 
+## 0.8.45 — 2026-10-16
+### 连接池失效不再把整个 host 进程带走（issue #54）
+
+**1）致命崩溃：SSH 连接池失效后，隧道上的任意请求都会杀掉 host 进程（issue #54）**
+
+现象是**整个 DSH host 进程退出**（不是"隧道断开"）：当前会话全丢、浏览器里所有页面失联，
+而且远端的 `dsh web` 变成没人回收的孤儿进程，反复崩溃会不断累积。稳定复现：
+
+```
+dsh: fatal uncaught exception: Error: Not connected
+    at Client.forwardOut (.../ssh2/lib/client.js:1400:13)
+    at WebAttach._pipe (.../dsh-remote/lib/web-attach.js:404)
+    at Server.<anonymous> (.../dsh-remote/lib/web-attach.js:376)
+    at TCP.onconnection (node:net:2310:8)
+```
+
+两个缺陷叠加，**缺一不可**：
+
+- **`forwardOut` 是同步抛出的，而调用处只处理了回调错误。** ssh2 在连接已死时
+  `throw new Error('Not connected')`（`if (!this._sock || !isWritable(this._sock))`），
+  **回调根本不会被调用**，所以 `if (err) { socket.destroy(); return }` 这条兜底对这条路径完全无效。
+  异常从 `net.Server` 的 connection 回调一路冒到进程顶层。修法：把 `forwardOut` 包进
+  `try/catch`，接住后只把隧道标成不可用（`lastError`）并销毁 socket —— 崩在"隧道不可用"上是把
+  一个可降级的 UI 状态当成了"进程该退出"。`lib/openssh.js`（issue #51 的系统 OpenSSH 后端）
+  在连接已关闭时 `spawnSsh()` 也是同步抛出，属同类风险，同一层兜住。
+
+- **`WebAttach` 借用了池的连接，却从未订阅它的生命周期。** 池失效时只清**自己**的引用
+  （`pool.js` 的 `close` 处理器与 `invalidate()`），`WebAttach.client` **永远是那个死句柄**，
+  于是下一次请求必然走到上面那条同步抛出的路径。仓库里 `ForwardManager` 早就做对了
+  （`forwards.js` 注册 `client.on('close', …)`），所以这是遗漏而非设计。
+  修法：`_attach()` 登记 `close` 监听（幂等、换客户端时先摘旧监听，`close()` 里摘干净），
+  并按 `ForwardManager` 的范式接上池的 `onReady` / `onCloseHook`。
+
+**1b）同一缺陷还有两个调用点，一并修掉（`grep -n forwardOut lib/*.js`）**
+
+同步抛出是 **ssh2 这个库**的性质，不是 `WebAttach` 的性质 —— 三个调用点里另外两个同样可达：
+
+- **`forwards.js` 的本地端口转发**（`_startLocal`）：它的 `net.Server` connection 回调就是
+  issue #54 那条致命栈本身。`attach()` 确实登记了 `close → stopAll()`，但那只能救"close 事件
+  先于请求到达"的时序；先来一个请求照样崩。现已走统一的 `forwardOutChannel()`。
+- **`pool.js` 的 ProxyJump 通道**（`pclient.forwardOut`）：它在 `new Promise` executor 里裸调。
+  executor 里的 `throw` **不会 reject 这个 promise**，而是变成 unhandled rejection ——
+  同样致命，而且更难归因（连接会永远 pending）。跳板机连接已死时就是这个场景。
+
+为此把「调一次 forwardOut 并拿到 channel」抽成导出的 `forwardOutChannel(client, spec)`，
+三个调用点共用一份带 `try/catch` 的实现（回调错误与同步抛出都变成普通的 reject）。
+
+**2）顺带把"崩溃"升级成"自愈"：隧道跟着连接池走**
+
+池是唯一既**发现**连接已死、又**拿到**新连接的地方，它正好暴露两个钩子：
+`onCloseHook`（在 `close()` / `invalidate()` 里触发 —— 后者就是"channel open 失败，
+连接在服务端已死"的自愈路径，也是本次最可能的触发点）与 `onReady`（每次连上后触发）。
+这两个槽位是**单槽属性**、插件已经用它们挂 `ForwardManager`，所以本会话是**串接**
+（转发给原钩子）而不是覆盖，`_detachPool()` 只在自己装的那个包装还在槽位里时才还原 ——
+别的拥有者接管了槽位就绝不抢回来。
+
+重连后远端端口可能已经变了（`--port 0` 是远端挑的，连接断开时进程可能一起死了），
+所以 `onReady` 会重新解析 (token, port)：先读本会话的远端日志，再用
+`/proc/<pid>/fd` 的 socket inode 去 `/proc/net/tcp{,6}` 里查该进程**实际 LISTEN** 的端口 ——
+日志里会有**两条**启动行（死掉的 + 重启的），位置判断不了哪条是活的，实证才能。
+进程真死了就重启它（**只重启本会话自己启动的进程**：挂到别人已在跑的实例上时一律不动）。
+
+**3）体检补上 node 最低版本（issue #54 附带问题）**
+
+"远端 dsh 体检"以前只问 node **在不在**、不校验版本，于是在 node 18 的机器上判定
+`can auto-install: yes`。安装会成功（npm 只给 EBADENGINE 警告、**不拦截**，535 个包照装），
+崩在启动时：
+
+```
+SyntaxError: The requested module 'node:util' does not provide an export named 'parseEnv'
+```
+
+而这条错误读起来完全不像"node 版本太低"。现在按 **Node ≥ 20.12** 判定 blocker
+（`parseEnv` 从 20.12.0 引入，21.7.0 也有），并给出去向：升级 node，
+把 `webAttachCommand` 指向新 node 的绝对路径。版本读不到时**不报** ——
+凭缺失的证据拒绝安装，会弄坏今天本来能用的机器。
+
+**4）`webAttachCommand` 终于有输入框了（同一 issue 的文档缺口）**
+
+README 一直写着"远端 `dsh` 不在 SSH 登录 PATH 时用 `webAttachCommand` 指向绝对路径"，
+但设置页里**没有**这个字段（`grep webAttachCommand lib/client.js` → 0 处），
+只能靠"部署并验证"成功时自动写入，或手改 `machines.json` —— README 也没说改哪个文件。
+现在它是机器的普通字段：设置页「高级」→「远端 dsh 命令」（机器级优先于全局），
+`rw_connect` 也能传。
+
+验证：新增 **29 个单测**（`test/issue54-stale-client.test.js` 22 个 +
+`test/issue54-webattach-command.test.js` 6 个 + web-deploy 的 node 版本判定），
+全量 **548/548** 通过；`node check.mjs` 闸门通过。
+崩溃修复的断言方式是"进程活着"本身：用会同步抛出的 client 驱动
+`net.Server` 的 connection 回调，`assert.doesNotThrow` 就是原始失效模式的对照。
+
 ## 0.8.44 — 2026-10-14
 ### 支持只允许 GSSAPI/Kerberos 的机器（issue #51）+ 修好目录选择器被弹出（issue #52）
 

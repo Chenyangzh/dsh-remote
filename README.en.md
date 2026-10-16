@@ -133,7 +133,17 @@ A new tab opens showing that remote machine's full DSH interface (chat, tool tre
   no second instance will be started.
 - When the remote `dsh` is not on the SSH login PATH, point `webAttachCommand` at its absolute path; to
   keep an attached instance out of the remote user's own sessions and settings, point `webAttachDshHome`
-  at a scratch directory.
+  at a scratch directory. This is **per machine**: Settings → Remote workspace → the machine card →
+  expand "Advanced" → "Remote dsh command" (e.g.
+  `/home/you/.nvm/versions/node/v22.19.0/bin/node /home/you/.dsh-remote/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js`).
+  Empty falls back to the global `webAttachCommand`. A successful "Deploy & verify" writes this field for you.
+- The tunnel follows the SSH connection: when it drops, the UI shows "Disconnected" and the local DSH
+  process is **not** affected. After the pool reconnects the plugin re-resolves the remote port (restarting
+  the remote process it started, if that one died), so hitting "Reconnect" is enough to carry on.
+- The remote node must be **≥ 20.12** (booting dsh needs `parseEnv` from `node:util`, which only exists
+  from 20.12). An older node is reported as a blocker by the check: npm only warns (EBADENGINE) and
+  installs anyway, and the crash arrives later as
+  `does not provide an export named 'parseEnv'` — so it has to be caught before the install.
 
 ### Cannot connect? Check the environment, then deploy in one click
 
@@ -260,7 +270,7 @@ Deploying to a product profile is a separate, explicit action (`./sync.sh`) for 
 | `updateCheckIntervalMs` | int | 21600000 (6h) | how often `auto` mode checks npm (floor 60000) |
 | `updateAutoReload` | bool | `true` | hot-swap the host half after an update lands; `false` defers it to the next process start and the panel reports `pendingReload` |
 | `webAttachPortStart` | int | `3088` | first local port for the "Remote DSH Web UI" tunnel (later ports are tried when taken; loopback only) |
-| `webAttachCommand` | string | `dsh` | command used to start `dsh web` on the remote; change it when the remote `dsh` is not on the SSH login PATH |
+| `webAttachCommand` | string | `dsh` | command used to start `dsh web` on the remote; change it when the remote `dsh` is not on the SSH login PATH (also settable per machine under "Advanced" in the settings page, which wins over this default) |
 | `webAttachDshHome` | string | `''` | `DSH_HOME` exported on the remote when attaching; empty reuses the remote user's own harness home |
 | `webAttachWaitSeconds` | int | `45` | how long to wait for a freshly started remote `dsh web` to print its launch token |
 | `webInstallPrefix` | string | `''` | where an automatic deployment installs dsh; empty means `$HOME/.dsh-remote/dsh` (no system directory, no PATH change) |

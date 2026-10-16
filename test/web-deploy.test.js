@@ -16,7 +16,7 @@ import assert from 'node:assert/strict'
 import {
   buildProbeCommand, parseProbe, versionAtLeast, judgeProbe,
   buildInstallPlan, resolvePrefix, stepResult,
-  PTY_FIXED_VERSION, DEFAULT_PREFIX_SUFFIX,
+  PTY_FIXED_VERSION, DEFAULT_PREFIX_SUFFIX, MIN_NODE_VERSION,
 } from '../lib/web-deploy.js'
 
 // ── probe output parsing ────────────────────────────────────────────────────
@@ -125,6 +125,85 @@ test('versionAtLeast compares dotted prerelease versions', () => {
   assert.equal(versionAtLeast('1.0.0', '0.9.9'), true)
   assert.equal(versionAtLeast('', '0.1.0'), false, 'unknown version is not "at least"')
   assert.equal(versionAtLeast('v0.2.0', '0.1.5'), true, 'leading v is tolerated')
+})
+
+// ── issue #54 appendix: a node too old to BOOT dsh ──────────────────────────
+//
+// Measured on a real host while investigating issue #54: the "remote dsh health
+// check" only asked whether node EXISTED, so a node 18 remote was told
+// "can auto-install: yes". The install then completed — npm only warns
+// (EBADENGINE) and does not refuse 52 packages — and the failure arrived later
+// as `SyntaxError: The requested module 'node:util' does not provide an export
+// named 'parseEnv'`, which does not read as "your node is too old".
+//
+// dsh needs >= 20.12 because `parseEnv` was introduced in Node 20.12.0:
+//   /usr/bin/node (v18.19.1)                          → parseEnv: undefined
+//   ~/.nvm/versions/node/v24.22.0/bin/node (v24.22.0) → parseEnv: function
+// https://nodejs.org/en/blog/release/v20.12.0
+
+test('MIN_NODE_VERSION is the release that introduced util.parseEnv', () => {
+  assert.equal(MIN_NODE_VERSION, '20.12.0')
+})
+
+test('a node below the minimum is a blocker, not a green light to install', () => {
+  const facts = parseProbe([
+    'P_OS=Linux', 'P_ARCH=x64', 'P_HOME=/root',
+    'P_NODE=/usr/bin/node', 'P_NODE_V=v18.19.1',
+    'P_NPM=/usr/bin/npm', 'P_NPM_V=10.2.0',
+    'P_PTY=', 'P_NOOPEN=',
+  ].join('\n'))
+  const v = judgeProbe(facts)
+  const tooOld = v.findings.find((x) => x.code === 'NODE_TOO_OLD')
+  assert.ok(tooOld, 'a node 18 remote must be reported')
+  assert.equal(tooOld.severity, 'blocker')
+  assert.match(tooOld.summary, /v18\.19\.1/, 'must name the version found')
+  assert.match(tooOld.summary, new RegExp(MIN_NODE_VERSION.replace(/\./g, '\\.')), 'must name the requirement')
+  assert.match(tooOld.detail, /parseEnv/, 'must name the actual error the user will see')
+  assert.match(tooOld.fix, /webAttachCommand/, 'must say how to point at a newer node')
+  assert.equal(v.ok, false)
+  assert.equal(v.canAutoInstall, false, 'installing onto node 18 would half-succeed and then crash')
+})
+
+test('node 20.12 itself is accepted (the boundary is inclusive)', () => {
+  const at = parseProbe([
+    'P_OS=Linux', 'P_NODE=/usr/bin/node', 'P_NODE_V=v20.12.0',
+    'P_NPM=/usr/bin/npm', 'P_NPM_V=10.5.0',
+  ].join('\n'))
+  assert.equal(judgeProbe(at).findings.some((x) => x.code === 'NODE_TOO_OLD'), false)
+  const below = parseProbe([
+    'P_OS=Linux', 'P_NODE=/usr/bin/node', 'P_NODE_V=v20.11.1',
+    'P_NPM=/usr/bin/npm', 'P_NPM_V=10.5.0',
+  ].join('\n'))
+  assert.equal(judgeProbe(below).findings.some((x) => x.code === 'NODE_TOO_OLD'), true)
+  assert.equal(judgeProbe(below).canAutoInstall, false)
+})
+
+test('node 21.7 / 22 / 24 are all accepted', () => {
+  for (const nv of ['v21.7.0', 'v22.23.1', 'v24.22.0']) {
+    const facts = parseProbe([
+      'P_OS=Linux', 'P_NODE=/usr/bin/node', `P_NODE_V=${nv}`,
+      'P_NPM=/usr/bin/npm', 'P_NPM_V=10.5.0',
+    ].join('\n'))
+    assert.equal(judgeProbe(facts).findings.some((x) => x.code === 'NODE_TOO_OLD'), false, `${nv} must be fine`)
+    assert.equal(judgeProbe(facts).canAutoInstall, true, `${nv} must be installable`)
+  }
+})
+
+test('a probe that could not read the node version does not invent a blocker', () => {
+  // An older/odd probe may report the path but not the version. Refusing to
+  // install on absent evidence would break remotes that work fine today.
+  const facts = parseProbe('P_OS=Linux\nP_NODE=/usr/bin/node\nP_NPM=/usr/bin/npm\n')
+  assert.equal(facts.nodeVersion, '')
+  const v = judgeProbe(facts)
+  assert.equal(v.findings.some((x) => x.code === 'NODE_TOO_OLD'), false)
+  assert.equal(v.canAutoInstall, true)
+})
+
+test('no node at all reports NO_NODE only, never both', () => {
+  const facts = parseProbe('P_OS=Linux\nP_NPM=/usr/bin/npm\n')
+  const v = judgeProbe(facts)
+  assert.equal(v.findings.filter((x) => x.code === 'NO_NODE').length, 1)
+  assert.equal(v.findings.some((x) => x.code === 'NODE_TOO_OLD'), false, 'absent is not "too old"')
 })
 
 // ── verdicts ────────────────────────────────────────────────────────────────
