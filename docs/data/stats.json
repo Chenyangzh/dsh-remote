@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-16T16:37:03.981Z",
+  "generatedAt": "2026-10-16T21:05:34.719Z",
   "heartbeat": {
     "ok": true,
     "daily": [
@@ -121,20 +121,20 @@
       },
       {
         "day": "2026-10-17",
-        "dau": 32
+        "dau": 107
       }
     ],
-    "installs": 2634,
+    "installs": 2643,
     "wau": 20,
     "mau": 20,
     "byVersion": [
       {
         "version": "0.8.46",
-        "n": 296
+        "n": 306
       },
       {
         "version": "0.8.44",
-        "n": 184
+        "n": 174
       },
       {
         "version": "0.8.37",
@@ -240,12 +240,12 @@
       }
     ],
     "tz": "Asia/Shanghai",
-    "generatedAt": "2026-10-16T16:37:00.346Z"
+    "generatedAt": "2026-10-16T21:05:31.849Z"
   },
   "heartbeatError": null,
   "npm": {
     "package": "dsh-remote",
-    "checkedAt": "2026-10-16T16:37:03.594Z",
+    "checkedAt": "2026-10-16T21:05:34.341Z",
     "latest": "0.8.46",
     "lastWeek": 6665,
     "lastMonth": 15867,
@@ -382,6 +382,6 @@
     "stars": 143,
     "forks": 28,
     "openIssues": 2,
-    "pushedAt": "2026-10-16T11:20:45Z"
+    "pushedAt": "2026-10-16T16:37:05Z"
   }
 }
