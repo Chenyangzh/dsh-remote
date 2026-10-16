@@ -1,6 +1,11 @@
 // Issue #54 — a stale pooled SSH client must not take the host process down.
 //
-// The measured crash (dsh-remote 0.8.44 → fixed in 0.8.45, ssh2 1.16):
+// The measured crash (reporter's stack, verbatim; dsh-remote 0.8.44 → fixed in
+// 0.8.45). ssh2 is pinned at ^1.16.0 and the lockfile resolves 1.17.x, where
+// `Client.forwardOut` begins `if (!this._sock || !isWritable(this._sock)) throw
+// new Error('Not connected')` — it THROWS instead of calling back. The guard is
+// quoted rather than cited by file:line because that line number moves between
+// ssh2 releases while the throw does not.
 //
 //   dsh: fatal uncaught exception: Error: Not connected
 //       at Client.forwardOut (ssh2/lib/client.js:1400:13)
@@ -507,6 +512,31 @@ test('trackPool:false leaves the pool completely untouched (test doubles)', asyn
   assert.equal(pool.onReady, undefined)
   assert.equal(pool.onCloseHook, undefined)
   assert.equal(attach.hookedPool, null)
+})
+
+// ── the port options: 0 is a value, not "unset" ────────────────────────────
+//
+// `opts.localPortStart || 3088` made 0 unrepresentable, so
+// `new WebAttach({ localPortStart: 0, localPortMax: 0 })` silently became
+// 3088/50. That is how a test asking for "port 0" (meaning "the OS picks", the
+// conventional way to avoid colliding with a real listener) was quietly given a
+// fixed real port instead. `??` is the fix, and this pins it.
+
+test('an explicit localPortStart of 0 survives construction', () => {
+  const attach = new WebAttach({ net: fakeNet(), localPortStart: 0, localPortMax: 1, trackPool: false })
+  assert.equal(attach.localPortStart, 0, '0 means "let the OS choose" and must not be read as unset')
+  assert.equal(attach.localPortMax, 1)
+})
+
+test('an explicit localPortMax of 0 survives construction', () => {
+  const attach = new WebAttach({ net: fakeNet(), localPortMax: 0, trackPool: false })
+  assert.equal(attach.localPortMax, 0)
+})
+
+test('omitting the port options still yields the documented defaults', () => {
+  const attach = new WebAttach({ net: fakeNet(), trackPool: false })
+  assert.equal(attach.localPortStart, 3088)
+  assert.equal(attach.localPortMax, 50)
 })
 
 // ── the SAME defect at the other two forwardOut call sites ──────────────────

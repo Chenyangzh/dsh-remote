@@ -60,7 +60,11 @@ function loadClient(protocol = 'https:', platform = 'Linux x86_64') {
   const effects = []
   const React = {
     createElement: (type, props, ...children) => ({ type, props, children }),
-    useState: (value) => [value, () => {}],
+    // Real `useState` CALLS a function initializer. A double that returned the
+    // function itself hands a component a thunk instead of the value — the bug
+    // that once produced five bogus failures in this repo's issue #55 tests, so
+    // the correct form is kept everywhere.
+    useState: (value) => [typeof value === 'function' ? value() : value, () => {}],
     useEffect: (fn) => { effects.push(fn) },
   }
   // Minimal Storage stand-in so the issue #32 eager migration is testable.

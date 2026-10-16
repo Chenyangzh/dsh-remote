@@ -33,7 +33,10 @@ function loadClient(responses = {}) {
   const effects = []
   const React = {
     createElement: (type, props, ...children) => ({ type, props: props || {}, children }),
-    useState: (value) => [value, () => {}],
+    // Real `useState` CALLS a function initializer (see the same note in
+    // client-lifecycle.test.js): returning the function would hand components a
+    // thunk instead of the value and silently falsify any lazy-init test.
+    useState: (value) => [typeof value === 'function' ? value() : value, () => {}],
     useEffect: (fn) => { effects.push(fn) },
     useRef: (v) => ({ current: v }),
     useMemo: (fn) => fn(),
@@ -253,7 +256,7 @@ test('the conversation header chip shows the host only for a remote session', as
 
 test('a failed registry read degrades to no badge, never to a wrong one', async () => {
   let loaded = null
-  const React = { createElement: (t, p, ...c) => ({ type: t, props: p || {}, children: c }), useState: (v) => [v, () => {}], useEffect: () => {} }
+  const React = { createElement: (t, p, ...c) => ({ type: t, props: p || {}, children: c }), useState: (v) => [typeof v === 'function' ? v() : v, () => {}], useEffect: () => {} }
   vm.runInNewContext(source, {
     window: {
       location: { protocol: 'https:' },

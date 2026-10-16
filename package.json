@@ -84,6 +84,6 @@
     "semver": "^7.8.5"
   },
   "scripts": {
-    "test": "node --import ./test/setup-telemetry-off.mjs --test"
+    "test": "node --import ./test/setup-telemetry-off.mjs --test --test-timeout=20000 --test-force-exit"
   }
 }
