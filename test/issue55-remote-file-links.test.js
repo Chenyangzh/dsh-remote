@@ -370,6 +370,54 @@ test('a Windows mirror produces a Windows remote path', async () => {
   )
 })
 
+// The separator must come from the REMOTE root, not from this machine's path
+// style. A Windows client mirroring a Linux host is the ORDINARY case for this
+// plugin, and deriving the separator from the local path glued a POSIX root to a
+// Windows join ("/home/u/app" + "\" + "x.c") — a path that can never be opened.
+// Found by driving the deployed bundle against a real mirror record.
+test('a Windows client mirroring a POSIX host joins with a forward slash', async () => {
+  const mixed = {
+    dir: 'D:\\tmp\\iso\\remote-workspaces\\9.134.186.191-jimmycppliu-36000\\QQMail',
+    host: '9.134.186.191', port: 36000, username: 'jimmycppliu',
+    remotePath: '/home/jimmycppliu/QQMail',
+  }
+  const { bodies } = bootWithSidebar({
+    routes: { '/dsh-remote/bindings': { mirrors: [mixed] } },
+    sessions: [{ id: 'm1', cwd: mixed.dir + '\\sub' }],
+  })
+  await new Promise((r) => setImmediate(r))
+  assert.equal(
+    remotePathFor(bodies, 'dsh-resource://file/session/m1/blocksvr/main.cc', 'm1'),
+    '/home/jimmycppliu/QQMail/blocksvr/main.cc',
+    'a POSIX remote root must never be joined with a backslash',
+  )
+  // The mirror prefix is still stripped when it arrives with either separator,
+  // and the local side folds case because Windows paths do.
+  const prefixed = 'dsh-resource://file/session/m1/' + encodeURIComponent(mixed.dir + '\\x.c')
+  assert.equal(remotePathFor(bodies, prefixed, 'm1'), '/home/jimmycppliu/QQMail/x.c')
+  const prefixedLower = 'dsh-resource://file/session/m1/'
+    + encodeURIComponent(mixed.dir.toLowerCase().replace(/\\/g, '/') + '/y.c')
+  assert.equal(remotePathFor(bodies, prefixedLower, 'm1'), '/home/jimmycppliu/QQMail/y.c',
+    'the comparison is separator- and case-insensitive on the Windows side')
+})
+
+test('a drive-letter path is refused on a POSIX remote rather than invented into it', async () => {
+  const mixed = {
+    dir: 'D:\\tmp\\iso\\remote-workspaces\\host-user-22',
+    host: 'host', port: 22, username: 'user', remotePath: '/srv/app',
+  }
+  const { bodies } = bootWithSidebar({
+    routes: { '/dsh-remote/bindings': { mirrors: [mixed] } },
+    sessions: [{ id: 'm1', cwd: mixed.dir + '\\sub' }],
+  })
+  await new Promise((r) => setImmediate(r))
+  // `D:/elsewhere/x.c` is a LOCAL path outside the mirror. Nothing on a Linux
+  // remote can name it, so the honest answer is "cannot resolve"; inventing
+  // "/srv/app/D:/elsewhere/x.c" would show a confusing error instead.
+  const addr = 'dsh-resource://file/session/m1/' + encodeURIComponent('D:/elsewhere/x.c')
+  assert.equal(remotePathFor(bodies, addr, 'm1'), null)
+})
+
 test('the link body is registered under the same kind as the type', () => {
   const { types } = bootWithSidebar()
   // The pane seat finds the body under the DEFINITION's own id, so a mismatch
