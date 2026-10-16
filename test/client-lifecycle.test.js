@@ -193,11 +193,17 @@ test('native right-sidebar attaches late, opens a session-scoped remote file, an
     types.set(type.kind, type)
     return () => types.delete(type.kind)
   } })
-  assert.deepEqual([...types.keys()], ['dsh-remote/explorer', 'dsh-remote/file'])
+  assert.deepEqual([...types.keys()], ['dsh-remote/explorer', 'dsh-remote/file', 'dsh-remote/remote-link'])
   assert.equal(types.get('dsh-remote/explorer').guide.length, 1)
   assert.deepEqual([...types.get('dsh-remote/file').patterns], ['dsh-resource://dsh-remote/**'])
+  // Issue #55: the third type claims the CORE's own address (not this plugin's),
+  // and declares no `priority` so it registers in the `extension` band that
+  // outranks the built-in local text preview.
+  assert.deepEqual([...types.get('dsh-remote/remote-link').patterns], ['dsh-resource://file/**'])
+  assert.equal(types.get('dsh-remote/remote-link').priority, undefined)
   const explorer = host.registrations.get('sidebar.right.pane.tab:dsh-remote/explorer')
   const file = host.registrations.get('sidebar.right.pane.tab:dsh-remote/file')
+  assert.ok(host.registrations.get('sidebar.right.pane.tab:dsh-remote/remote-link'), 'the link body must be registered')
   let address
   const child = explorer.render({ sessionId: 'session-one', useTabInfo: () => ({ tab: {
     visible: true, actions: { openResource(value) { address = value } },
