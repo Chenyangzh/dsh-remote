@@ -3,7 +3,7 @@
 All notable changes to **dsh-remote**.
 
 ## 0.8.45 — 2026-10-16
-### 连接池失效不再把整个 host 进程带走（issue #54）
+### 连接池失效不再把整个 host 进程带走（issue #54）+ 文档回答「容器当工作空间」（issue #56）
 
 **1）致命崩溃：SSH 连接池失效后，隧道上的任意请求都会杀掉 host 进程（issue #54）**
 
@@ -92,6 +92,32 @@ README 一直写着"远端 `dsh` 不在 SSH 登录 PATH 时用 `webAttachCommand
 全量 **548/548** 通过；`node check.mjs` 闸门通过。
 崩溃修复的断言方式是"进程活着"本身：用会同步抛出的 client 驱动
 `net.Server` 的 connection 回调，`assert.doesNotThrow` 就是原始失效模式的对照。
+
+### 文档：远程主机上的 docker 容器怎么当工作空间（issue #56）
+
+需求是「把远程主机上的 docker 容器当工作空间」。**核对后不需要改任何代码** ——
+插件对容器零感知（全仓 `docker`/`container`/`podman`/`kubectl`/`nsenter` 扫描只命中
+`lib/ignore.js` 的一条 `~/.docker` 搜索忽略与几处截图版式字段），但两条**既有**配置已经完整覆盖：
+
+- **容器映射了 sshd 端口**（`docker run -p 127.0.0.1:2222:22`）⇒ 纯「跳板机」配置。
+  关键在 `proxy` 的语义就是「**在跳板机上**连 `<host>:<port>`」
+  （`lib/pool.js` 的 `pclient.forwardOut(...this.config.host, this.config.port...)`），
+  拿到的通道被当作主连接自己的 transport（`opts.sock`）⇒ SFTP 走**容器自己的 sshd**，
+  `rw_list_dir`/`rw_read_file`/`rw_write_file`/`rw_sync` 读写的都是容器内文件。
+- **容器没有暴露端口** ⇒ 纯 `~/.ssh/config`：`ProxyCommand ssh <主机> docker exec -i <容器> sh -c 'exec socat - TCP:127.0.0.1:22'`
+  + `backend: openssh`。`openssh` 后端把别名原样交给 `ssh` 且**刻意不生成自己的 `ProxyCommand`**
+  （`lib/openssh.js`，就是为了让 `~/.ssh/config` 说了算），而 `ssh -s <目标> sftp` 与
+  `ssh -- <目标> <命令>` 走同一条流 ⇒ 命令与文件操作**都**进容器。
+
+**为什么没有走「给 exec 套一层 `docker exec`」这条捷径**：那会造成**脑裂** ——
+SFTP 是 ssh2 的子系统通道（native）/ `ssh -s sftp`（openssh），
+远端的 `sftp-server` 由 sshd 在**宿主命名空间**里拉起，**没有任何 shell 包装能改变这一点**，
+于是 17+ 处文件操作（`rw_sync`/`rw_push`/侧栏读文件/`@` 补全/自动推回）会继续读写宿主。
+真要实现必须换掉唯一的那道缝 `buildSftpSurface`，那就不是"小改"了。
+
+把「Windows 自带 OpenSSH 不展开 `ProxyCommand`」的实测结论写进了 README
+（POSIX OpenSSH 会交给 shell，Windows 9.5 当字面 argv），并标注 `docker exec -i` 的二进制保真度
+**未验证**（本机没有 docker）—— 不能用没验证过的结论冒充结论。
 
 ## 0.8.44 — 2026-10-14
 ### 支持只允许 GSSAPI/Kerberos 的机器（issue #51）+ 修好目录选择器被弹出（issue #52）

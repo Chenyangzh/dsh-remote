@@ -236,7 +236,7 @@ scripts/dev-run.sh --status    # 是否在运行
 | `keyboardInteractive` | bool | `false` | 允许 keyboard-interactive 认证（OTP/MFA）并复用配置的密码 |
 | `backend` | string | `native` | SSH 传输后端（issue #51）。`native`=内置 ssh2（密码/私钥/agent/动态码）；`openssh`=**调用本机 `ssh` 命令**，因此支持 GSSAPI/Kerberos（`kinit` 后免密）以及 `ProxyCommand`、`PKCS11Provider`、`Match` 等 OpenSSH 专有特性。**可按机器单独设置**。代价：每条命令新建一次连接（比 native 慢）；SFTP 仍复用单条长连接。主机名会被**原样**交给 ssh（`~/.ssh/config` 是配置唯一来源），主机密钥也由 ssh 用你自己的 `known_hosts` 校验 |
 | `sshBinary` | string | `''` | `openssh` 后端调用的 `ssh` 可执行文件（留空=用 PATH 里的 `ssh`） |
-| `proxy` | object | — | 跳板机：`{ host, port?, username?, password?, privateKeyPath? }` |
+| `proxy` | object | — | 跳板机：`{ host, port?, username?, password?, privateKeyPath? }`；语义是「在跳板机上连目标 host:port」，所以也能用来连跳板机上 docker 容器的 sshd（见「常见问题」里的 issue #56） |
 | `autoPush` | bool | `false` | 镜像内文件被编辑后自动推回远端（watcher，带防抖） |
 | `auditLog` | bool | `true` | 把执行的命令追加到 `$DSH_HOME/remote-workspaces/audit.log` |
 | `encoding` | string | `utf-8` | 远程文件读写的文本编码（如 `gbk`） |
@@ -269,6 +269,37 @@ scripts/dev-run.sh --status    # 是否在运行
 **连接报「认证失败」** —— 检查用户名/密码/私钥路径；加密私钥要填 Passphrase；需要动态码时勾选 keyboard-interactive。
 
 **连不上内网机器** —— 填「跳板机」主机（也可先把跳板机本身配成一台机器）。
+
+**能不能拿远程主机上的 docker 容器当工作空间？**（issue #56）—— 能，**不需要改插件**；
+插件对容器没有任何专门代码，但下面两条既有配置已经完整覆盖这个需求。请按容器**有没有对外暴露端口**二选一：
+
+- **A：容器把 sshd 端口映射出来了**（例如 `docker run -p 127.0.0.1:2222:22 …`）—— 纯「跳板机」配置：
+  Host 填 `127.0.0.1`、Port 填 `2222`、用户/私钥填容器里的，再把「跳板机」主机填**那台远程主机**。
+  为什么这样文件就能落到容器里：`proxy` 的语义是「**在跳板机上**连 `<host>:<port>`」
+  （`lib/pool.js` 的 `pclient.forwardOut(...this.config.host, this.config.port...)`），
+  拿到的通道会被当成主连接自己的 transport（`opts.sock`），于是 SFTP 走的是**容器自己的 sshd** ⇒
+  `rw_list_dir`/`rw_read_file`/`rw_write_file`/`rw_sync` 全部读写的都是容器内的文件。
+  命令行等价写法：`rw_connect(host="127.0.0.1", port=2222, username="<容器用户>", privateKeyPath="<私钥>")`。
+  要求：远程主机的 sshd 允许转发（`AllowTcpForwarding yes`，默认就是）。
+- **B：容器没有暴露端口** —— 纯 `~/.ssh/config` + 系统 OpenSSH 后端，在**本机** `~/.ssh/config` 写：
+
+```sshconfig
+Host devbox
+    HostName devbox.invalid
+    User dev
+    IdentityFile ~/.ssh/id_ed25519
+    ProxyCommand ssh <远程主机> docker exec -i <容器名> sh -c 'exec socat - TCP:127.0.0.1:22'
+```
+
+  然后 `rw_connect(host="devbox", useSshConfig=true, backend="openssh")`。
+  为什么 `exec` 和文件操作**都会**进容器：`openssh` 后端把别名原样交给 `ssh`，
+  自己**从不**生成 `ProxyCommand`（`lib/openssh.js` 明确不传，就是为了让 `~/.ssh/config` 说了算），
+  而 `ssh -s <目标> sftp` 与 `ssh -- <目标> <命令>` 走的是同一条流 ⇒ 两者都穿过这个 ProxyCommand。
+  要求：容器里有 sshd，且有 `socat`（或用支持 stdio 的 `nc`）。
+  ⚠️ **Windows 上有个坑**：POSIX OpenSSH 会把 `ProxyCommand` 交给 shell 展开，**Windows 自带的 OpenSSH 9.5 不会**
+  （实测它把整串按字面当成 argv）。所以在 Windows 跑本插件时，要么把 `ProxyCommand` 写成
+  不含 shell 元字符的单条命令，要么把「ssh 路径」指向 Git Bash 的 `ssh.exe`。
+  （另：`docker exec -i` 传二进制是否逐字节无损，我这边没有 docker 环境验证过，B 方案建议先用小文件试。）
 
 **企业机器只允许 GSSAPI/Kerberos（`kinit` 后 `ssh` 能进，插件进不去）** —— 在设置 → 远程工作区 → 高级配置里把「连接后端」改成 **`openssh`**（调用本机 `ssh`），并勾选「使用 ssh_config 别名」，Host 填 `~/.ssh/config` 里那个**别名**（不是 IP）。这样登录由本机 ssh 用你的 Kerberos 票据完成，且 `ProxyCommand`、`GSSAPIAuthentication` 等全部照 `~/.ssh/config` 生效 —— **配置只有 `~/.ssh/config` 一个来源**（issue #50/#51）。命令行等价写法：`rw_connect(host="<别名>", useSshConfig=true, backend="openssh")`。
 

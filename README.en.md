@@ -255,7 +255,7 @@ Deploying to a product profile is a separate, explicit action (`./sync.sh`) for 
 | `keyboardInteractive` | bool | `false` | allow keyboard-interactive auth (OTP/MFA) with the configured password |
 | `backend` | string | `native` | SSH transport backend (issue #51). `native` = the built-in ssh2 client (password / private key / agent / OTP); `openssh` = **drive the local `ssh` command**, which is the only way to reach hosts whose sole authentication method is GSSAPI/Kerberos (log in once with `kinit`), and which also honours `ProxyCommand`, `PKCS11Provider`, `Match` blocks and the rest of `~/.ssh/config`. **Settable per machine.** The cost is a fresh connection per command (slower than native); SFTP still reuses one session. The host name is handed to ssh **verbatim** (so `~/.ssh/config` stays the single source of truth) and host keys are checked by ssh against your own `known_hosts` |
 | `sshBinary` | string | `''` | the `ssh` executable the `openssh` backend drives (empty = the `ssh` on PATH) |
-| `proxy` | object | — | jump host: `{ host, port?, username?, password?, privateKeyPath? }` |
+| `proxy` | object | — | jump host: `{ host, port?, username?, password?, privateKeyPath? }`; it means "reach the target host:port from the bastion", which is also what reaches a docker container's sshd on the bastion (see the issue #56 entry in the FAQ) |
 | `autoPush` | bool | `false` | auto-push edited mirror files back to the remote (watcher, debounced) |
 | `auditLog` | bool | `true` | append executed commands to `$DSH_HOME/remote-workspaces/audit.log` |
 | `encoding` | string | `utf-8` | text encoding for remote file reads/writes (e.g. `gbk`) |
@@ -290,6 +290,22 @@ Deploying to a product profile is a separate, explicit action (`./sync.sh`) for 
 **Cannot reach an internal machine** — set a jump host (or add the bastion as its own machine first).
 
 **The host only allows GSSAPI/Kerberos (`ssh` works after `kinit`, the plugin does not)** — in Settings → 远程工作区 → Advanced, switch **Backend** to `openssh` (drive the local `ssh`) and tick "use a ~/.ssh/config alias", with Host set to the **alias** in `~/.ssh/config` (not the IP). The login is then performed by your local ssh with your Kerberos ticket, and `ProxyCommand`, `GSSAPIAuthentication` etc. all apply per `~/.ssh/config` — **one source of truth for the configuration** (issues #50/#51). Command-line equivalent: `rw_connect(host="<alias>", useSshConfig=true, backend="openssh")`.
+
+**Can a docker container on the remote host be the workspace?** (issue #56) — Yes, and **no plugin change is needed**. There is no container-specific code anywhere in the plugin, yet the two configurations below already cover the request. Pick by whether the container **publishes a port**:
+
+- **A: the container maps its sshd** (e.g. `docker run -p 127.0.0.1:2222:22 …`) — a plain "jump host" configuration: Host `127.0.0.1`, Port `2222`, the container's user/key, and the **remote host** as the jump host. Why the files really land in the container: `proxy` means "connect to `<host>:<port>` **as resolved by the bastion**" (`lib/pool.js`: `pclient.forwardOut(...this.config.host, this.config.port...)`), and the resulting channel becomes the main connection's own transport (`opts.sock`), so SFTP rides the **container's** sshd — `rw_list_dir`/`rw_read_file`/`rw_write_file`/`rw_sync` all read and write container files. Command-line equivalent: `rw_connect(host="127.0.0.1", port=2222, username="<container user>", privateKeyPath="<key>")`. Requires `AllowTcpForwarding` on the remote sshd (the default).
+- **B: the container publishes nothing** — pure `~/.ssh/config` plus the system-OpenSSH backend, on **your** machine:
+
+```sshconfig
+Host devbox
+    HostName devbox.invalid
+    User dev
+    IdentityFile ~/.ssh/id_ed25519
+    ProxyCommand ssh <remote-host> docker exec -i <container> sh -c 'exec socat - TCP:127.0.0.1:22'
+```
+
+  then `rw_connect(host="devbox", useSshConfig=true, backend="openssh")`. Why **both** commands and file operations reach the container: the `openssh` backend hands the alias to `ssh` verbatim and deliberately never emits its own `ProxyCommand` (`lib/openssh.js` omits it so that `~/.ssh/config` decides), while `ssh -s <dest> sftp` and `ssh -- <dest> <cmd>` travel the same stream. Requires an sshd inside the container plus `socat` (or an `nc` that speaks stdio).
+  ⚠️ **A Windows caveat**: POSIX OpenSSH shell-expands `ProxyCommand`, but **Windows' own OpenSSH 9.5 does not** (measured: it passes the whole string through as literal argv). So on a Windows host either keep the `ProxyCommand` a single command with no shell metacharacters, or point "ssh path" at Git Bash's `ssh.exe`. (Also: whether `docker exec -i` carries binary data byte-for-byte is unverified here — no docker on this machine — so try a small file with B first.)
 
 **`rw_sync`/`rw_push` reports conflicts** — files changed on both sides are skipped and listed (never silently overwritten); merge manually and retry, or pass `force=true`.
 
