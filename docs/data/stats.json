@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T04:47:44.354Z",
+  "generatedAt": "2026-10-20T11:33:24.269Z",
   "heartbeat": {
     "ok": true,
     "daily": [
@@ -121,36 +121,40 @@
       },
       {
         "day": "2026-10-20",
-        "dau": 956
+        "dau": 1634
       }
     ],
-    "installs": 3549,
+    "installs": 3725,
     "wau": 20,
     "mau": 20,
     "byVersion": [
       {
         "version": "0.8.46",
-        "n": 388
+        "n": 232
+      },
+      {
+        "version": "0.8.48",
+        "n": 158
       },
       {
         "version": "0.8.37",
-        "n": 149
+        "n": 148
       },
       {
         "version": "0.8.47",
-        "n": 112
+        "n": 118
       },
       {
         "version": "0.8.36",
-        "n": 107
-      },
-      {
-        "version": "0.8.44",
-        "n": 55
+        "n": 106
       },
       {
         "version": "0.8.34",
-        "n": 55
+        "n": 54
+      },
+      {
+        "version": "0.8.44",
+        "n": 51
       },
       {
         "version": "0.8.35",
@@ -158,11 +162,15 @@
       },
       {
         "version": "0.8.42",
-        "n": 40
+        "n": 39
       },
       {
         "version": "0.8.40",
         "n": 9
+      },
+      {
+        "version": "0.8.29",
+        "n": 6
       },
       {
         "version": "0.8.39",
@@ -177,12 +185,8 @@
         "n": 5
       },
       {
-        "version": "0.8.29",
-        "n": 5
-      },
-      {
         "version": "0.8.38",
-        "n": 5
+        "n": 4
       },
       {
         "version": "0.8.31",
@@ -193,15 +197,11 @@
         "n": 3
       },
       {
-        "version": "0.8.41",
+        "version": "0.8.43",
         "n": 2
       },
       {
         "version": "0.8.27",
-        "n": 1
-      },
-      {
-        "version": "0.8.43",
         "n": 1
       },
       {
@@ -210,6 +210,10 @@
       },
       {
         "version": "0.8.99",
+        "n": 1
+      },
+      {
+        "version": "0.8.41",
         "n": 1
       },
       {
@@ -240,13 +244,13 @@
       }
     ],
     "tz": "Asia/Shanghai",
-    "generatedAt": "2026-10-20T04:47:40.783Z"
+    "generatedAt": "2026-10-20T11:33:21.754Z"
   },
   "heartbeatError": null,
   "npm": {
     "package": "dsh-remote",
-    "checkedAt": "2026-10-20T04:47:44.060Z",
-    "latest": "0.8.47",
+    "checkedAt": "2026-10-20T11:33:23.872Z",
+    "latest": "0.8.48",
     "lastWeek": 5012,
     "lastMonth": 17290,
     "daily": [
@@ -381,9 +385,9 @@
     "note": "npm daily counts have reporting gaps; zero-value days are flagged and are not real zero usage."
   },
   "repo": {
-    "stars": 162,
-    "forks": 29,
+    "stars": 164,
+    "forks": 31,
     "openIssues": 3,
-    "pushedAt": "2026-10-20T02:09:34Z"
+    "pushedAt": "2026-10-20T07:56:38Z"
   }
 }
