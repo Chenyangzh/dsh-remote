@@ -24,8 +24,15 @@ Optional: `scripts/boot-smoke.sh` if a desktop harness is installed.
 
 ## 3. Publish to npm
 
+**0.8.47 起发布包带 `bundleDependencies`（ssh2 及其硬依赖闭包随 tarball 分发，
+为绕开 pnpm 11 默认拦截依赖构建脚本导致的安装失败，issue #57）。**
+bundled 依赖是从本地 `node_modules` 原样打进 tarball 的，所以发布前必须保证
+本地依赖树是**没跑过 install 脚本**的干净状态，否则本机编出的 `.node` 原生
+二进制会混进 tarball 分发给所有平台：
+
 ```bash
-npm publish    # Granular Access Token with Bypass-2FA (npm 2026 policy)
+npm install --ignore-scripts   # 刷新依赖树但不构建任何原生产物
+npm publish                    # Granular Access Token with Bypass-2FA (npm 2026 policy)
 ```
 
 GitHub: tag `vX.Y.Z` and use the CHANGELOG section as the release notes — do not

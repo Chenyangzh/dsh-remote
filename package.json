@@ -1,6 +1,6 @@
 {
   "name": "dsh-remote",
-  "version": "0.8.46",
+  "version": "0.8.47",
   "description": "Remote-work assistant for DeepSeek Harness: connect SSH (password/key/agent/keyboard-interactive/proxy jump), pick a remote workspace, operate on it with 22 rw_* tools (incl. rw_edit/rw_stat/rw_mkdir/rw_remove/rw_move/rw_forward), conflict-aware mirror sync, one-click remote dsh deploy + web UI attach, port forwarding, optional side-bar remote file editing, audit log, keychain passwords.",
   "license": "MIT",
   "author": "flymysql <flyphp@outlook.com>",
@@ -73,6 +73,12 @@
     "@deepseek-ai/schemastery": "^3.18.1",
     "iconv-lite": "^0.6.3"
   },
+  "bundleDependencies": [
+    "ssh2",
+    "asn1",
+    "bcrypt-pbkdf",
+    "tweetnacl"
+  ],
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-llm": "^0.1.0-rc.8",

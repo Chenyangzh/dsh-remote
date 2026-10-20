@@ -11,7 +11,10 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 
-const src = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+// Normalize line endings: a Windows checkout with core.autocrlf=true hands us
+// CRLF, and the dictionary-marker literals below are LF-only (the test failed
+// on every Windows clone, never in CI).
+const src = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n')
 
 /** Extract the `const L = { zh: {...}, en: {...} }` object via a sandbox. */
 function extractDicts() {

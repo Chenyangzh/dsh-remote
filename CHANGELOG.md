@@ -2,6 +2,50 @@
 
 All notable changes to **dsh-remote**.
 
+## 0.8.47 — 2026-10-20
+### 三个真机验证的修复：中文目录选择（issue #58）、符号链接跳转（issue #59）、pnpm 11 装不上插件（issue #57）
+
+**issue #58 — 系统文件夹选择器打不开中文目录（Windows）**：插件兜底弹的
+PowerShell `FolderBrowserDialog` 把选中的路径按**控制台 OEM 代码页**（中文系统是 GBK）写到
+stdout，而 Node 按 UTF-8 解码 —— 中文目录名变成乱码，随后打开工作区报「不是目录」。
+现在脚本输出 `base64(UTF-8)` 编码的路径（任何代码页下都是纯 ASCII），宿主侧解码，
+中文/emoji/空格目录名都原样回来。直接输入路径、macOS/Linux 选择器本来就没这个问题。
+抽出 `decodePickStdout` / `win32FolderPickScript` 两个纯函数并钉了 5 条单测
+（与 issue #30 的 DPAPI 脚本同一套「只在 Windows 桌面可观察」的测试模式）。
+
+**issue #59 — 远程目录选择器双击符号链接不跳转**：`listDirStructured()` 解析符号链接指向时
+用的是 `lstat` —— 它描述的是**链接本身**，所以指向目录的符号链接永远被标成 `'file'`，
+选择器自然不进去。改成 `stat`（跟随链接）：指向目录的链接现在标 `'dir'` 可直接进入，
+并带 `link: true` 标记；悬空链接按注释承诺的那样降级为 `'file'`（旧代码注释说降级、
+实际留下了 `'symlink'`，顺手对齐）。3 条单测。
+
+**issue #57 — Plugin Hub 安装后重启报错 / 装不上**：真实桌面端（0.2.1-rc.2, win32）复现出两条独立因果：
+
+1. **安装失败**：桌面端内置 pnpm 11 默认拦截依赖的构建脚本并以
+   `ERR_PNPM_IGNORED_BUILDS` 退出（exit 1），`ssh2`/`cpu-features` 都在被拦名单里 ——
+   `pnpm add dsh-remote` 在桌面 profile 直接失败。而 ssh2 的 install 脚本只编**可选**原生
+   crypto 绑定，纯 JS 路径完全可用（实测 `--ignore-scripts` 下 import 正常）。
+   **修法**：把 ssh2 及其硬依赖闭包（`asn1`/`bcrypt-pbkdf`/`tweetnacl`）打进发布包
+   （`bundleDependencies`）—— bundled 依赖不跑 install 脚本，`pnpm add dsh-remote`
+   在 pnpm 11 下干净退出 0。已在真实桌面 profile 验证：装包 → 启动 → 插件激活 → 重启，全绿。
+2. **「host exited with 1」的日志里没有真错误**：桌面 shell 起 host 的方式触发了
+   DEP0190 警告，真正的 fatal 经 IPC 上报时与 stderr 竞争，崩溃报告只抓到 stderr 尾巴
+   （那条警告）—— DEP0190 是烟幕弹。评论里 10-03 的日志才是真相：那是**已下架的旧包
+   `dsh-remote-ssh`**（2026-09-16 unpublish）会用同名条目**顶替核心服务**（shell/fs/subprocess），
+   它 import 失败会把 required 核心条目拖死 → 整个 host 退出 1。**当前的 `dsh-remote` 不顶替任何
+   核心服务**（只插入一个 `dsh-remote` 条目），实测在 0.2.1-rc.2 桌面端安装+重启无此问题；
+   遇到过旧包的用户卸载 `dsh-remote-ssh` 即可。
+
+另外修了一条**仓库自伤**的测试缺陷：`test/i18n.test.js` 的字典标记是 LF 字面量，
+Windows 克隆（`core.autocrlf=true` → CRLF）下永远找不到、整条测试永远红 —— 读入后先归一化换行。
+
+全量 **582/582** 通过（新增 11 条），`check.mjs` 干净；#58 的 PowerShell→Node 中文回路、
+#57 的桌面端安装→激活→重启都在真机上端到端跑通。
+
+> 发布注意：本版本起发布包含 bundled 依赖（`node_modules/ssh2` 等随 tarball 分发）。
+> 发布前请 `npm install --ignore-scripts` 保证本地 node_modules 不带本机编出的原生产物
+> （详见 PUBLISH.md）。
+
 ## 0.8.46 — 2026-10-16
 ### 修掉 0.8.45 里远程文件链接的路径分隔符缺陷（issue #55 的真机验证发现）
 
