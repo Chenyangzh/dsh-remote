@@ -2,6 +2,30 @@
 
 All notable changes to **dsh-remote**.
 
+## 0.8.48 — 2026-10-20
+### 工作区可以是文件系统根目录（issue #60）
+
+**守卫的错位**：`rw_pick_workspace`、`POST /dsh-remote/workspace`、`POST /dsh-remote/mirror`
+三处的 `if (!p || p === '/')` 表面上拦空输入，实际上拦的是**根目录** ——
+`normalizeRemotePath('')` 本来就返回 `'/'`，`!p` 永远不会真。而 `/` 恰恰就是"绝对目录"，
+报错文案自相矛盾。现在只拒**空白的原始输入**（原始字符串 trim 后为空），
+`/`、`D:\` 等根路径一律交给真实的 `isRemoteDir()` 探测回答（不存在的路径照旧被拒）。
+
+**配套保护（ROOT_IGNORE）**：放开根目录的唯一真实风险是镜像/搜索撞进合成文件系统 ——
+`/proc`、`/sys` 每次 readdir 都长出新 pid、`/proc/kcore` 号称 128TB，`/dev` 有永不结束的
+字符设备，`/var/lib/docker` 动辄几十 GB。新增 `ROOT_IGNORE`（`/proc/ /sys/ /dev/ /run/ /boot/
+/var/lib/docker/`，全部根锚定 + 仅目录），**仅当工作区就是根时**才合并进忽略表：
+`/` 会跳过 `/proc`，而 `/home/u/proc` 是普通内容照常镜像；非根工作区行为与之前逐字节一致。
+
+**顺手修了一条沉睡的语义缺口**：`rw_search` 的忽略匹配一直只传** basename**，
+根锚定规则（包括默认搜索忽略集里的 `Library/Caches/`）在搜索里从未生效。
+现在搜索和同步一样传**相对搜索根的路径**，ROOT_IGNORE 与锚定规则在搜索里同样活着。
+
+新增 `test/root-workspace.test.js` 8 条：三处守卫（根过守卫、空仍被拒、失败落在探测阶段）、
+`isFilesystemRoot`、`ROOT_IGNORE` 只对根生效、锚定规则只作用顶层、从 `/` 同步跳过合成树
+但保留真实内容、非根工作区照常镜像自己的 `proc/`、从 `/` 搜索不下钻合成树。
+全量 **590/590** 通过，`check.mjs` 干净。
+
 ## 0.8.47 — 2026-10-20
 ### 三个真机验证的修复：中文目录选择（issue #58）、符号链接跳转（issue #59）、pnpm 11 装不上插件（issue #57）
 
