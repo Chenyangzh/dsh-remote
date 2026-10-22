@@ -2,6 +2,48 @@
 
 All notable changes to **dsh-remote**.
 
+## 0.8.50 — 2026-10-22
+### ~/.ssh/config 成为连接四字段的唯一来源（issue #50）
+
+**读方向（文件优先）**：任何 Host 块**点名**的主机——含字面 IP——连接都按
+`~/.ssh/config` 实时解析（HostName/User/Port/IdentityFile/ProxyJump），机器记录里的
+副本只兜底填空。裸 `Host *` 是通用默认、**不算点名**（否则一条通配会劫持全部机器）；
+组模式（`*.corp`、`web-?`）与真实 ssh 一样算点名。之前只有别名机器（issue #38）走这条路，
+这正是 issue 讨论里「还没做完的那半」。openssh 后端对这类机器同样**原样递交字面主机名**，
+不预解析——否则 ssh 匹配不上 `Host 别名` 块，GSSAPI/ProxyCommand 会静默丢失（issue #51 的教训）。
+
+**写方向（受管块）**：保存字面机器时把 主机/用户/端口/私钥 upsert 进 `~/.ssh/config`
+的 **`# dsh-remote: managed` 标记块**——只写非默认字段（HostName≠别名才写、Port≠22 才写），
+只重写这四个自有行，块内你加的其它行（如 `ForwardAgent yes`）原样保留；**你手写的同名
+Host 块绝不覆盖**，作为冲突在保存响应里报告。改名机器会退役旧受管块（那是插件自己的编辑
+产物）；删除机器**不动**配置——Host 块是你的 ssh 访问权，不是插件状态。写入按 OpenSSH
+习惯设权限（POSIX：目录 0700、文件 0600）。
+
+**行为变更（有意）**：`rw_connect` 传字面主机名且该名字被 Host 块点名时，现在解析该块
+（旧测试钉的「字面绝不解析」契约被 issue #50 取代——真实 `ssh build` 本来就会解析
+`Host build`）。机器状态（recentWorkspaces/lastConnectedAt/latencyMs）仍在注册表，
+与连接配置分离。
+
+设置页：被文件驱动的机器行同样显示 `ssh_config` 徽标与解析结果；表单在非别名模式下提示
+「保存会写入受管块」。新增 `test/issue50-sshconfig-single-source.test.js` 16 条 +
+改写 1 条旧契约测试。全量 **661/661** 通过，`check.mjs` 干净。
+
+## 0.8.49 — 2026-10-21
+### 开始页卡片单一归属（#61）+ 远程 ssh 进宿主终端菜单（#62）
+
+**#61 fix(sidebar)**：开始页「远程文件」卡片是原生 tab 类型的 `guide` 条目，dsh-remote 与
+better-sidebar 各发一条且宿主聚合不去重——better-sidebar 的开关只撤自己那条，卡片永远不消失。
+现在卡片唯一归属：better-sidebar 在场时归它（开关真正生效），缺席时归本插件；两种激活顺序、
+移除后归还都有测试钉住。同时移除无效的 `remote:file` 描述符（hidden 开关唯一效果是"文件开不了"），
+树改为经 `sidebarRight.openResource` 按地址打开文件，与原生 explorer 同一条路。
+
+**#62 feat(terminal)**：侧边栏新建终端的 shell 列表多出 **remote ssh**——往宿主自己的
+shell 候选里贡献一项，pty/resize/回滚/括号粘贴全留在宿主。launcher 是薄转发器
+（`~/.dsh/remote-terminal`），child 从终端所在目录向上找 `.dsh-remote-meta.json` 解析目标，
+**alias 优先**匹配 `machines.json`（改 `~/.ssh/config` 依然有效）；Windows 提交裸名 + PATH
+追加（引用计数）保持菜单标签干净；Windows 远端只发 `ssh -tt` 不猜 POSIX 命令。
+合并前修复了 7 条 Linux CI 失败（测试把 win32 路径拼写喂给运行时 path 模块的平台耦合）。
+
 ## 0.8.48 — 2026-10-20
 ### 工作区可以是文件系统根目录（issue #60）
 

@@ -419,14 +419,22 @@ test('rw_connect dials the RESOLVED host of an alias, and the registry keeps the
   })
 })
 
-test('rw_connect without useSshConfig keeps the literal host (no accidental alias lookup)', async () => {
-  // A saved ALIAS machine name used literally must NOT be resolved: the flag is
-  // the only switch, so an existing setup cannot change behaviour underneath.
-  await withPlugin(ALIAS_CONFIG, null, async ({ routes, tools }) => {
+test('rw_connect with a literal host named by a Host block resolves through the file (issue #50)', async () => {
+  // SUPERSEDED contract: before issue #50 this test pinned "no accidental
+  // alias lookup" — a literal host was dialed verbatim and only the
+  // useSshConfig flag switched resolution on. Issue #50 makes ~/.ssh/config
+  // the single source for any host it NAMES: `ssh build` resolves `Host
+  // build` in real ssh, and the plugin now does the same. The registry still
+  // holds the literal copy as the fallback for a missing/renamed block.
+  await withPlugin(ALIAS_CONFIG, null, async ({ routes, tools, machinesFile }) => {
     const connect = tools.get('rw_connect')
     await connect.execute({ host: 'build', save: true }, {}).catch(() => {})
     const st = await call(routes, '/dsh-remote/status', { method: 'GET' })
-    assert.equal(st.json.host, 'build')
-    assert.equal(st.json.port, 22)
+    assert.equal(st.json.host, '127.0.0.1', 'HostName from the naming block wins')
+    assert.equal(st.json.port, 1, 'Port from the naming block wins over the saved 22')
+    assert.equal(st.json.username, 'mmdev')
+    const saved = JSON.parse(readFileSync(machinesFile, 'utf8'))
+    const rec = saved.list.find((m) => m.host === 'build')
+    assert.ok(rec && !rec.useSshConfig, 'the record stays a literal copy (fallback), not an alias')
   })
 })
