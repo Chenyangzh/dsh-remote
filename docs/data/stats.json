@@ -1,12 +1,8 @@
 {
-  "generatedAt": "2026-10-22T11:48:57.702Z",
+  "generatedAt": "2026-10-22T17:08:40.366Z",
   "heartbeat": {
     "ok": true,
     "daily": [
-      {
-        "day": "2026-09-23",
-        "dau": 0
-      },
       {
         "day": "2026-09-24",
         "dau": 0
@@ -121,16 +117,20 @@
       },
       {
         "day": "2026-10-22",
-        "dau": 1865
+        "dau": 2081
+      },
+      {
+        "day": "2026-10-23",
+        "dau": 109
       }
     ],
-    "installs": 4536,
+    "installs": 4635,
     "wau": 20,
     "mau": 20,
     "byVersion": [
       {
         "version": "0.8.50",
-        "n": 266
+        "n": 310
       },
       {
         "version": "0.8.37",
@@ -138,35 +138,35 @@
       },
       {
         "version": "0.8.46",
-        "n": 127
+        "n": 119
       },
       {
         "version": "0.8.36",
-        "n": 101
+        "n": 103
       },
       {
         "version": "0.8.49",
-        "n": 89
+        "n": 58
       },
       {
         "version": "0.8.34",
-        "n": 50
+        "n": 49
       },
       {
         "version": "0.8.35",
-        "n": 43
+        "n": 42
       },
       {
         "version": "0.8.48",
-        "n": 41
+        "n": 40
       },
       {
         "version": "0.8.44",
-        "n": 41
+        "n": 40
       },
       {
         "version": "0.8.42",
-        "n": 39
+        "n": 38
       },
       {
         "version": "0.8.40",
@@ -174,7 +174,7 @@
       },
       {
         "version": "0.8.47",
-        "n": 9
+        "n": 7
       },
       {
         "version": "0.8.29",
@@ -252,12 +252,12 @@
       }
     ],
     "tz": "Asia/Shanghai",
-    "generatedAt": "2026-10-22T11:48:54.664Z"
+    "generatedAt": "2026-10-22T17:08:37.739Z"
   },
   "heartbeatError": null,
   "npm": {
     "package": "dsh-remote",
-    "checkedAt": "2026-10-22T11:48:57.425Z",
+    "checkedAt": "2026-10-22T17:08:39.926Z",
     "latest": "0.8.50",
     "lastWeek": 5012,
     "lastMonth": 17290,
@@ -396,6 +396,6 @@
     "stars": 175,
     "forks": 33,
     "openIssues": 2,
-    "pushedAt": "2026-10-22T04:41:18Z"
+    "pushedAt": "2026-10-22T11:48:58Z"
   }
 }
