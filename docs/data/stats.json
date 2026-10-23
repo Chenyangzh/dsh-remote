@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T04:46:37.921Z",
+  "generatedAt": "2026-10-23T11:36:02.025Z",
   "heartbeat": {
     "ok": true,
     "daily": [
@@ -121,28 +121,32 @@
       },
       {
         "day": "2026-10-23",
-        "dau": 825
+        "dau": 1703
       }
     ],
-    "installs": 4736,
+    "installs": 4874,
     "wau": 20,
     "mau": 20,
     "byVersion": [
       {
         "version": "0.8.50",
-        "n": 338
+        "n": 205
       },
       {
-        "version": "0.8.37",
+        "version": "0.8.51",
         "n": 146
       },
       {
+        "version": "0.8.37",
+        "n": 143
+      },
+      {
         "version": "0.8.46",
-        "n": 114
+        "n": 110
       },
       {
         "version": "0.8.36",
-        "n": 103
+        "n": 104
       },
       {
         "version": "0.8.34",
@@ -150,11 +154,7 @@
       },
       {
         "version": "0.8.35",
-        "n": 42
-      },
-      {
-        "version": "0.8.49",
-        "n": 41
+        "n": 43
       },
       {
         "version": "0.8.44",
@@ -165,8 +165,12 @@
         "n": 37
       },
       {
-        "version": "0.8.48",
+        "version": "0.8.49",
         "n": 34
+      },
+      {
+        "version": "0.8.48",
+        "n": 31
       },
       {
         "version": "0.8.40",
@@ -174,11 +178,11 @@
       },
       {
         "version": "0.8.29",
-        "n": 6
+        "n": 7
       },
       {
         "version": "0.8.47",
-        "n": 6
+        "n": 7
       },
       {
         "version": "0.8.39",
@@ -252,13 +256,13 @@
       }
     ],
     "tz": "Asia/Shanghai",
-    "generatedAt": "2026-10-23T04:46:35.627Z"
+    "generatedAt": "2026-10-23T11:35:59.480Z"
   },
   "heartbeatError": null,
   "npm": {
     "package": "dsh-remote",
-    "checkedAt": "2026-10-23T04:46:37.601Z",
-    "latest": "0.8.50",
+    "checkedAt": "2026-10-23T11:36:01.712Z",
+    "latest": "0.8.51",
     "lastWeek": 5012,
     "lastMonth": 17290,
     "daily": [
@@ -393,9 +397,9 @@
     "note": "npm daily counts have reporting gaps; zero-value days are flagged and are not real zero usage."
   },
   "repo": {
-    "stars": 175,
+    "stars": 179,
     "forks": 33,
-    "openIssues": 2,
-    "pushedAt": "2026-10-22T21:33:54Z"
+    "openIssues": 1,
+    "pushedAt": "2026-10-23T08:19:33Z"
   }
 }
