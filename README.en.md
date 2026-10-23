@@ -276,6 +276,7 @@ Deploying to a product profile is a separate, explicit action (`./sync.sh`) for 
 | `webInstallPrefix` | string | `''` | where an automatic deployment installs dsh; empty means `$HOME/.dsh-remote/dsh` (no system directory, no PATH change) |
 | `webInstallVersion` | string | `0.1.5-rc.2` | dsh version an automatic deployment installs; the default is the first that can start the web surface on Linux |
 | `webInstallRegistry` | string | `''` | npm registry for the install; **empty keeps the remote's own config**, so an internal mirror is never overridden |
+| `localTools` | string | `bootstrap` | which `rw_*` tools a LOCAL session (cwd outside every remote mirror) sees (issue #63): `bootstrap` keeps only the configuration loop `rw_machines`/`rw_connect`/`rw_pick_workspace` (the other 19 refuse a local session with "this session is LOCAL", so exposing them just wastes schema budget); `none` hides all `rw_*` (remote setup happens via the settings page only); `all` restores the legacy full surface. REMOTE sessions (cwd inside a mirror) always see everything; an invalid value degrades to `bootstrap` |
 
 > The authoritative list is the `Config` schema in `lib/index.js`; this table mirrors it.
 

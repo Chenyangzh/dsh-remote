@@ -258,6 +258,7 @@ scripts/dev-run.sh --status    # 是否在运行
 | `webInstallPrefix` | string | `''` | 自动部署装到远端的哪个目录；留空用 `$HOME/.dsh-remote/dsh`（不写系统目录、不改 PATH） |
 | `webInstallVersion` | string | `0.1.5-rc.2` | 自动部署安装的 dsh 版本；默认值是第一个在 Linux 上能启动 web 的版本 |
 | `webInstallRegistry` | string | `''` | 安装用的 npm 源；**留空沿用远端自己的配置**，不会覆盖内网镜像 |
+| `localTools` | string | `bootstrap` | 本地 session（cwd 不在远程镜像里）暴露哪些 `rw_*` 工具（issue #63）：`bootstrap`=只暴露配置闭环 `rw_machines`/`rw_connect`/`rw_pick_workspace`（其余 19 个在本地 session 必然报 "this session is LOCAL"，暴露只是白占 schema）；`none`=完全不暴露 `rw_*`（远程配置只能走设置页）；`all`=旧的 full 暴露。远程 session（cwd 在镜像里）不受影响，始终全量；非法值按 `bootstrap` 处理 |
 
 > 权威清单是 `lib/index.js` 里的 `Config` schema，本表与之一致。
 

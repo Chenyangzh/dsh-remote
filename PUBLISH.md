@@ -1,7 +1,7 @@
 # Publish Guide — dsh-remote
 
 Current product: a **remote-work assistant** for DeepSeek Harness (multi-machine
-SSH, remote workspace picker, 21 `rw_*` tools, conflict-aware SFTP sync, port
+SSH, remote workspace picker, 22 `rw_*` tools, conflict-aware SFTP sync, port
 forwarding, optional sidebar editor). This is **not** the early “print SSH
 tunnel commands” plugin.
 

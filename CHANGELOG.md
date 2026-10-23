@@ -2,6 +2,35 @@
 
 All notable changes to **dsh-remote**.
 
+## 0.8.51 — 2026-10-22
+### 本地 session 的 rw_* 工具可见性分层（issue #63）
+
+**问题**：纯本地 session（cwd 不在任何远程镜像里）每次请求都带上全部 22 个
+`rw_*` 工具的 schema（约 4k tokens），但其中 16 个操作类工具在本地 session
+必然被 `bindingFor()` 拒绝（"this session is LOCAL"）——占着 schema 预算，
+却不可能成功执行。
+
+**默认行为（`localTools: 'bootstrap'`）**：本地 session 只暴露配置闭环
+`rw_machines` / `rw_connect` / `rw_pick_workspace`，其余 19 个被隐藏。远程
+session（cwd 落在镜像里）不受影响，始终全量。判定复用 prompt 注入同一条
+`resolveMirrorForLocal(cwd)` 链路（机器被删掉的镜像按本地处理，与
+`bindingFor` 一致）；无 agent/cwd 的 assembly 原样放行。
+
+**实现**：注册 `system-prompt/assemble` waterfall 监听器，在每次请求的
+最终工具列表（带着 `context.agent`）上按 session cwd 过滤——工具仍在
+`apply()` 全局注册（注册时没有 session 可言），可见性按请求裁。无事件
+能力的最小宿主/测试替身自动退化为旧的全量行为。
+
+**新配置 `localTools`**：`bootstrap`（默认）/ `none`（本地 session 完全
+不暴露 `rw_*`，远程配置只能走设置页）/ `all`（旧行为，22 个全暴露）。
+非法值按 `bootstrap` 处理。
+
+**文案修正**：`rw_pick_workspace` 在本地 session 的收尾提示从「Run
+rw_sync…」（该指令在本地 session 必然失败）改为「本 session 是本地会话，
+请用上面的 mirror 路径新开会话再执行 rw_sync」；镜像内 session 保持原文案。
+
+**勘误**：`PUBLISH.md` 的 rw_* 工具计数 21 → 22。
+
 ## 0.8.50 — 2026-10-22
 ### ~/.ssh/config 成为连接四字段的唯一来源（issue #50）
 
