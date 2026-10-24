@@ -1,12 +1,8 @@
 {
-  "generatedAt": "2026-10-24T15:55:24.993Z",
+  "generatedAt": "2026-10-24T20:46:55.539Z",
   "heartbeat": {
     "ok": true,
     "daily": [
-      {
-        "day": "2026-09-25",
-        "dau": 0
-      },
       {
         "day": "2026-09-26",
         "dau": 0
@@ -121,16 +117,20 @@
       },
       {
         "day": "2026-10-24",
-        "dau": 1281
+        "dau": 1284
+      },
+      {
+        "day": "2026-10-25",
+        "dau": 219
       }
     ],
-    "installs": 5215,
+    "installs": 5256,
     "wau": 20,
     "mau": 20,
     "byVersion": [
       {
         "version": "0.8.51",
-        "n": 330
+        "n": 341
       },
       {
         "version": "0.8.37",
@@ -138,19 +138,19 @@
       },
       {
         "version": "0.8.36",
-        "n": 102
+        "n": 101
       },
       {
         "version": "0.8.46",
-        "n": 91
+        "n": 89
       },
       {
         "version": "0.8.50",
-        "n": 62
+        "n": 57
       },
       {
         "version": "0.8.34",
-        "n": 49
+        "n": 48
       },
       {
         "version": "0.8.35",
@@ -166,7 +166,7 @@
       },
       {
         "version": "0.8.49",
-        "n": 28
+        "n": 27
       },
       {
         "version": "0.8.48",
@@ -193,10 +193,6 @@
         "n": 5
       },
       {
-        "version": "0.8.47",
-        "n": 4
-      },
-      {
         "version": "0.8.26",
         "n": 3
       },
@@ -206,6 +202,10 @@
       },
       {
         "version": "0.8.31",
+        "n": 3
+      },
+      {
+        "version": "0.8.47",
         "n": 3
       },
       {
@@ -256,12 +256,12 @@
       }
     ],
     "tz": "Asia/Shanghai",
-    "generatedAt": "2026-10-24T15:55:21.365Z"
+    "generatedAt": "2026-10-24T20:46:52.706Z"
   },
   "heartbeatError": null,
   "npm": {
     "package": "dsh-remote",
-    "checkedAt": "2026-10-24T15:55:24.735Z",
+    "checkedAt": "2026-10-24T20:46:54.927Z",
     "latest": "0.8.51",
     "lastWeek": 6930,
     "lastMonth": 19914,
@@ -400,9 +400,9 @@
     "note": "npm daily counts have reporting gaps; zero-value days are flagged and are not real zero usage."
   },
   "repo": {
-    "stars": 181,
+    "stars": 182,
     "forks": 33,
     "openIssues": 2,
-    "pushedAt": "2026-10-24T10:56:51Z"
+    "pushedAt": "2026-10-24T15:55:25Z"
   }
 }
